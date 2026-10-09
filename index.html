@@ -1116,34 +1116,36 @@ async function startTVMode() {
 
   setStatus("Akuarium TV terhubung. Menunggu gambar dari HP...");
 
-  const drawingsQuery = query(
-    ref(db, "drawings"),
-    limitToLast(15)
-  );
+  
+/* TV SELALU MENGIKUTI ISI FIREBASE */
+onValue(ref(db, "drawings"), snapshot => {
+  // Kosongkan tampilan agar tidak ada gambar lama tertinggal
+  creatures.replaceChildren();
 
-  onChildAdded(drawingsQuery, snapshot => {
-    const data = snapshot.val();
+  if (!snapshot.exists()) {
+    setStatus("Akuarium kosong. Menunggu gambar dari HP...");
+    return;
+  }
+
+  snapshot.forEach(item => {
+    const data = item.val();
+
     if (!data || !data.image) return;
 
     const img = document.createElement("img");
     img.className = "creature";
     img.alt = "Hewan hasil gambar anak";
     img.src = data.image;
-
-    // Hindari menambahkan gambar yang sama dua kali.
-    img.dataset.firebaseId = snapshot.key;
-
-    if (
-      [...creatures.querySelectorAll(".creature")]
-        .some(item => item.dataset.firebaseId === snapshot.key)
-    ) return;
+    img.dataset.firebaseId = item.key;
 
     creatures.appendChild(img);
-    setStatus("Gambar baru muncul di akuarium!");
-  }, error => {
-    console.error(error);
-    setStatus("Tidak dapat menerima gambar. Periksa aturan database.");
   });
+
+  setStatus("Akuarium diperbarui dari Firebase.");
+}, error => {
+  console.error(error);
+  setStatus("Gagal menyinkronkan akuarium dengan Firebase.");
+});
 
   // Coba masuk layar penuh; browser TV mungkin meminta interaksi manual.
   try {
