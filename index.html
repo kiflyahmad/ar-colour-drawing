@@ -517,6 +517,30 @@ button:hover { background: #a5f3fc; }
   max-height: 24%;
 }
 
+
+/* Tampilan kamera vertikal di HP dan PC */
+#camera,
+#video,
+video#webcam {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  transform: none;
+  border-radius: 12px;
+}
+
+/* Di HP, batasi lebar kamera agar tetap proporsional */
+@media (max-width: 600px) {
+  #camera,
+  #video,
+  video#webcam {
+    width: 100%;
+    max-width: 420px;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+  }
+}
+
 </style>
 </head>
 
@@ -603,26 +627,50 @@ document.getElementById("start").onclick = async () => {
   }
 };
 
-// Mengambil gambar dan menghapus piksel putih
-document.getElementById("capture").onclick = () => {
-  if (!video.videoWidth || video.readyState < 2) {
-    statusText.textContent = "Nyalakan webcam terlebih dahulu.";
-    return;
-  }
 
-  const canvas = document.createElement("canvas");
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
+  // Mengambil gambar portrait dan menghapus piksel putih
+  document.getElementById("capture").onclick = () => {
+    if (!video.videoWidth || video.readyState < 2) {
+      statusText.textContent = "Nyalakan webcam terlebih dahulu.";
+      return;
+    }
 
-  const ctx = canvas.getContext("2d", {
-    willReadFrequently: true
-  });
+    const sourceW = video.videoWidth;
+    const sourceH = video.videoHeight;
 
-  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    // Ambil area tengah dengan rasio portrait 3:4
+    const ratio = 3 / 4;
+    let cropW = sourceW;
+    let cropH = sourceH;
 
-  const frame = ctx.getImageData(
-    0, 0, canvas.width, canvas.height
-  );
+    if (sourceW / sourceH > ratio) {
+      cropW = Math.round(sourceH * ratio);
+    } else {
+      cropH = Math.round(sourceW / ratio);
+    }
+
+    const sourceX = Math.round((sourceW - cropW) / 2);
+    const sourceY = Math.round((sourceH - cropH) / 2);
+
+    const canvas = document.createElement("canvas");
+    canvas.width = cropW;
+    canvas.height = cropH;
+
+    const ctx = canvas.getContext("2d", {
+      willReadFrequently: true
+    });
+
+    // Gambar yang diproses sekarang sudah portrait
+    ctx.drawImage(
+      video,
+      sourceX, sourceY, cropW, cropH,
+      0, 0, canvas.width, canvas.height
+    );
+
+    const frame = ctx.getImageData(
+      0, 0, canvas.width, canvas.height
+    );
+
 
   const pixels = frame.data;
 
