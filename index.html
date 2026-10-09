@@ -1,0 +1,952 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AR Colour Drawing - Dunia Laut</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  color: white;
+  background: #061b36;
+}
+
+header {
+  text-align: center;
+  padding: 12px;
+  background: #082f52;
+}
+
+header h1 { margin: 5px; }
+header p { margin: 5px; color: #bdeaff; }
+
+.app {
+  display: grid;
+  grid-template-columns: 300px 1fr;
+  gap: 14px;
+  padding: 14px;
+}
+
+.panel {
+  padding: 14px;
+  background: #10385a;
+  border-radius: 14px;
+}
+
+video {
+  width: 100%;
+  border-radius: 10px;
+  background: black;
+}
+
+button {
+  width: 100%;
+  margin-top: 10px;
+  padding: 12px;
+  border: none;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 15px;
+  font-weight: bold;
+  color: #07304b;
+  background: #6ee7f9;
+}
+
+button:hover { background: #a5f3fc; }
+
+#status {
+  font-size: 13px;
+  color: #d5f6ff;
+  line-height: 1.5;
+}
+
+/* Dunia bawah laut */
+#ocean {
+  position: relative;
+  height: min(76vh, 650px);
+  min-height: 400px;
+  overflow: hidden;
+  border-radius: 16px;
+  background:
+    radial-gradient(ellipse at 50% 100%,
+      #13a89c 0%, transparent 42%),
+    linear-gradient(#168cc2, #07528e 55%, #031f4c);
+}
+
+.sunlight {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    110deg,
+    transparent 0 70px,
+    #ffffff0b 75px 100px,
+    transparent 110px 170px
+  );
+  pointer-events: none;
+}
+
+.bubble {
+  position: absolute;
+  bottom: -30px;
+  width: 12px;
+  height: 12px;
+  border: 2px solid #c5f7ff88;
+  border-radius: 50%;
+  animation: rise linear infinite;
+}
+
+@keyframes rise {
+  from { transform: translateY(0); opacity: 0; }
+  15% { opacity: 1; }
+  to { transform: translateY(-750px); opacity: 0; }
+}
+
+.seabed {
+  position: absolute;
+  bottom: 0;
+  height: 70px;
+  width: 100%;
+  background: linear-gradient(#d5bd70, #8b7845);
+  clip-path: polygon(0 40%, 20% 15%, 40% 45%,
+    65% 10%, 82% 35%, 100% 15%, 100% 100%, 0 100%);
+}
+
+.coral {
+  position: absolute;
+  bottom: 40px;
+  font-size: 48px;
+  filter: drop-shadow(0 3px 2px #002a48);
+}
+
+#creatures {
+  position: absolute;
+  inset: 0;
+}
+
+.creature {
+  position: absolute;
+  width: 180px;
+  height: auto;
+  max-height: 180px;
+  object-fit: contain;
+  left: 0;
+  top: 40%;
+  animation: swim 12s linear infinite alternate;
+  filter: drop-shadow(0 5px 5px #002b4766);
+}
+
+@keyframes swim {
+  from { transform: translateX(10px) translateY(0) rotate(-3deg); }
+  to { transform: translateX(calc(70vw - 200px))
+                    translateY(-35px) rotate(3deg); }
+}
+
+@media (max-width: 760px) {
+  .app { grid-template-columns: 1fr; }
+  #ocean { height: 60vh; }
+}
+
+
+/* Animasi hewan berenang */
+
+/* Hewan berenang di dalam akuarium */
+.creature {
+  position: absolute;
+  width: 170px;
+  height: auto;
+  object-fit: contain;
+  left: 0;
+  top: 30%;
+  filter: drop-shadow(0 5px 5px #002b4766);
+  transform-origin: center;
+  will-change: left, top, transform;
+
+  animation:
+    berenang 12s ease-in-out infinite alternate,
+    meliuk 1.8s ease-in-out infinite;
+}
+
+/* Bergerak melintasi laut sambil naik turun */
+@keyframes berenang {
+  0% {
+    left: 2%;
+    top: 25%;
+  }
+
+  25% {
+    left: 20%;
+    top: 42%;
+  }
+
+  50% {
+    left: 42%;
+    top: 20%;
+  }
+
+  75% {
+    left: 60%;
+    top: 48%;
+  }
+
+  100% {
+    left: 70%;
+    top: 30%;
+  }
+}
+
+/* Gerakan meliuk mengikuti arus */
+@keyframes meliuk {
+  0%, 100% {
+    transform: rotate(-4deg) scale(1);
+  }
+
+  50% {
+    transform: rotate(4deg) scale(1.04);
+  }
+}
+
+
+/* Mode akuarium layar penuh */
+#ocean:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  min-height: 0;
+  border-radius: 0;
+  background:
+    radial-gradient(ellipse at 50% 100%,
+      #13a89c 0%, transparent 42%),
+    linear-gradient(#168cc2, #07528e 55%, #031f4c);
+}
+
+#ocean:fullscreen .creature {
+  max-width: 20vw;
+  max-height: 25vh;
+}
+
+#ocean:fullscreen .coral {
+  font-size: 7vh;
+}
+
+#ocean:fullscreen .seabed {
+  height: 12vh;
+}
+
+#ocean:fullscreen .bubble {
+  animation-duration: 7s;
+}
+
+
+/* =================================
+   AR COLOUR DRAWING - OCEAN WORLD
+   ================================= */
+
+#ocean {
+  isolation: isolate;
+  background:
+    radial-gradient(ellipse at 15% 15%,
+      #57d8ee55 0%, transparent 35%),
+    radial-gradient(ellipse at 85% 75%,
+      #00d4a044 0%, transparent 40%),
+    linear-gradient(
+      180deg,
+      #49d8ed 0%,
+      #168bbd 22%,
+      #07558d 58%,
+      #03274d 100%
+    );
+  box-shadow:
+    inset 0 0 65px #001b3b77,
+    0 12px 35px #00152e66;
+}
+
+/* Cahaya matahari dari permukaan laut */
+#ocean .sunlight {
+  z-index: 1;
+  opacity: 0.85;
+  background:
+    linear-gradient(
+      115deg,
+      transparent 20%,
+      #e6ffff20 28%,
+      transparent 36%
+    ),
+    repeating-linear-gradient(
+      105deg,
+      transparent 0 75px,
+      #eaffff20 90px 115px,
+      transparent 135px 210px
+    );
+  background-size: 100% 100%, 220% 100%;
+  animation: oceanLight 12s ease-in-out infinite alternate;
+  pointer-events: none;
+}
+
+@keyframes oceanLight {
+  from {
+    background-position: 0 0, 0 0;
+    opacity: 0.4;
+  }
+  to {
+    background-position: 0 0, 100% 0;
+    opacity: 0.9;
+  }
+}
+
+/* Gelembung air */
+#ocean .bubble {
+  z-index: 2;
+  background: #dffaff22;
+  box-shadow: inset -2px -2px 4px #ffffff22;
+  animation-name: oceanBubble;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+}
+
+@keyframes oceanBubble {
+  0% {
+    transform: translate(0, 0) scale(0.7);
+    opacity: 0;
+  }
+  15% {
+    opacity: 0.85;
+  }
+  50% {
+    transform: translate(16px, -350px) scale(1);
+  }
+  100% {
+    transform: translate(-12px, -800px) scale(0.8);
+    opacity: 0;
+  }
+}
+
+/* Karang dan rumput laut bergoyang */
+#ocean .coral {
+  z-index: 3;
+  transform-origin: bottom center;
+  animation: seaPlant 3s ease-in-out infinite alternate;
+}
+
+#ocean .coral:nth-of-type(even) {
+  animation-duration: 4.2s;
+  animation-delay: -1.5s;
+}
+
+@keyframes seaPlant {
+  from {
+    transform: rotate(-5deg) translateY(0);
+  }
+  to {
+    transform: rotate(5deg) translateY(-5px);
+  }
+}
+
+/* Hewan hasil karya anak tetap di depan latar */
+#ocean #creatures {
+  z-index: 4;
+}
+
+#ocean .creature {
+  z-index: 4;
+  filter:
+    drop-shadow(0 5px 5px #001a3566)
+    drop-shadow(0 0 8px #b9faff22);
+}
+
+/* Dasar laut berlapis */
+#ocean .seabed {
+  z-index: 5;
+  height: 75px;
+  background:
+    radial-gradient(ellipse at 20% 0%, #f7e4a7, transparent 50%),
+    linear-gradient(180deg, #e5ce87, #bca05c 55%, #8a7144);
+  box-shadow: 0 -8px 22px #9ef5dc18;
+}
+
+/* Sudut akuarium */
+#ocean {
+  border: 1px solid #9beeff55;
+}
+
+/* Mode layar penuh */
+#ocean:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  min-height: 0;
+  border: none;
+  border-radius: 0;
+}
+
+#ocean:fullscreen .seabed {
+  height: 12vh;
+}
+
+
+#ocean {
+  position: relative;
+  overflow: hidden;
+  background-image: url("./ocean-background.png");
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
+  isolation: isolate;
+}
+
+#ocean #creatures {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+}
+
+#ocean .seabed {
+  display: none;
+}
+
+
+/* Background tetap tampil saat Full Screen */
+#ocean:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  max-height: none;
+  min-height: 0;
+  margin: 0;
+  border: none;
+  border-radius: 0;
+
+  background-image: url("./ocean-background.png") !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+}
+
+/* Pastikan gambar hewan hasil kamera berada di atas background */
+#ocean:fullscreen #creatures {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+}
+
+/* Sembunyikan dasar laut lama jika menutupi background */
+#ocean:fullscreen .seabed {
+  display: none;
+}
+
+
+#ocean {
+  position: relative;
+  overflow: hidden;
+  background-color: #007fa8;
+}
+
+#ocean #oceanVideo {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+  pointer-events: none;
+}
+
+#ocean .sunlight,
+#ocean #bubbles,
+#ocean .coral {
+  z-index: 2;
+}
+
+#ocean #creatures {
+  z-index: 4;
+}
+
+#ocean:fullscreen {
+  width: 100vw;
+  height: 100vh;
+  background-image: none !important;
+}
+
+#ocean:fullscreen #oceanVideo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+
+/* ANIMASI BARU: HEWAN MENJELAJAH AKUARIUM */
+
+#ocean #creatures {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+#ocean .creature {
+  position: absolute;
+  max-width: 18%;
+  max-height: 24%;
+  object-fit: contain;
+
+  /* Matikan animasi lama agar tidak bertabrakan */
+  animation: none !important;
+
+  /* Gerakan berpindah secara halus */
+  transition:
+    left 7s ease-in-out,
+    top 7s ease-in-out,
+    transform 1.2s ease-in-out;
+
+  will-change: left, top, transform;
+}
+
+/* Ruang gerak tetap mengikuti layar penuh */
+#ocean:fullscreen #creatures {
+  position: absolute;
+  inset: 0;
+}
+
+#ocean:fullscreen .creature {
+  max-width: 18%;
+  max-height: 24%;
+}
+
+</style>
+</head>
+
+<body>
+<header>
+  <h1>🐠 AR COLOUR DRAWING 🐢</h1>
+  <p>Warnai gambar, pindai, dan lihat hewanmu berenang!</p>
+</header>
+
+<main class="app">
+  <section class="panel">
+    <h3>📷 Studio Pemindai</h3>
+    <video id="camera" autoplay playsinline></video>
+
+    <button id="start">Nyalakan Webcam</button>
+    <button id="capture">✨ Masukkan ke Dunia Laut</button>
+    <button id="clear">Hapus Semua Hewan</button>
+    <button id="fullscreen">⛶ Layar Penuh</button>
+
+    <p id="status">
+      Hubungkan webcam, letakkan gambar di depan kamera,
+      lalu tekan tombol Masukkan ke Dunia Laut.
+    </p>
+    <p style="font-size:12px;color:#bdeaff">
+      Tips: gunakan kertas putih, pencahayaan terang,
+      dan gambar dengan garis luar yang jelas.
+    </p>
+  </section>
+
+  <section id="ocean">
+    
+<video id="oceanVideo" autoplay muted loop playsinline>
+    <source src="./ocean-video.mp4" type="video/mp4">
+  </video>
+
+    <div class="sunlight"></div>
+    <div id="bubbles"></div>
+
+    <div id="creatures"></div>
+    <div class="seabed"></div>
+  </section>
+</main>
+
+<script>
+const video = document.getElementById("camera");
+const statusText = document.getElementById("status");
+const creatures = document.getElementById("creatures");
+
+let stream = null;
+let creatureCount = 0;
+
+// Membuat gelembung air
+const bubbles = document.getElementById("bubbles");
+
+for (let i = 0; i < 24; i++) {
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  bubble.style.left = Math.random() * 100 + "%";
+  bubble.style.animationDuration = (5 + Math.random() * 12) + "s";
+  bubble.style.animationDelay = (-Math.random() * 12) + "s";
+  bubbles.appendChild(bubble);
+}
+
+// Mengaktifkan webcam
+document.getElementById("start").onclick = async () => {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        width: { ideal: 1280 },
+        height: { ideal: 720 },
+        facingMode: "environment"
+      },
+      audio: false
+    });
+
+    video.srcObject = stream;
+    await video.play();
+
+    statusText.textContent =
+      "Webcam aktif! Arahkan kamera ke gambar yang sudah diwarnai.";
+  } catch (error) {
+    statusText.textContent =
+      "Kamera tidak dapat dibuka. Periksa izin kamera dan pastikan aplikasi berjalan melalui localhost.";
+  }
+};
+
+// Mengambil gambar dan menghapus piksel putih
+document.getElementById("capture").onclick = () => {
+  if (!video.videoWidth || video.readyState < 2) {
+    statusText.textContent = "Nyalakan webcam terlebih dahulu.";
+    return;
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+
+  const ctx = canvas.getContext("2d", {
+    willReadFrequently: true
+  });
+
+  ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+  const frame = ctx.getImageData(
+    0, 0, canvas.width, canvas.height
+  );
+
+  const pixels = frame.data;
+
+  // Hapus warna yang mendekati putih.
+  // Hapus latar putih yang terhubung ke tepi gambar
+  const w = canvas.width;
+  const h = canvas.height;
+  const visited = new Uint8Array(w * h);
+  const queue = new Int32Array(w * h);
+  let head = 0;
+  let tail = 0;
+
+  function isPaper(x, y) {
+    const i = (y * w + x) * 4;
+    const r = pixels[i];
+    const g = pixels[i + 1];
+    const b = pixels[i + 2];
+
+    const brightest = Math.max(r, g, b);
+    const darkest = Math.min(r, g, b);
+
+    // Ambang untuk kertas putih dan bayangan abu-abu terang
+    return brightest > 175 &&
+           darkest > 145 &&
+           brightest - darkest < 45;
+  }
+
+  function addPixel(x, y) {
+    if (x < 0 || x >= w || y < 0 || y >= h) return;
+
+    const pos = y * w + x;
+
+    if (visited[pos]) return;
+    visited[pos] = 1;
+
+    if (isPaper(x, y)) {
+      queue[tail++] = pos;
+    }
+  }
+
+  // Mulai dari seluruh tepi foto
+  for (let x = 0; x < w; x++) {
+    addPixel(x, 0);
+    addPixel(x, h - 1);
+  }
+
+  for (let y = 0; y < h; y++) {
+    addPixel(0, y);
+    addPixel(w - 1, y);
+  }
+
+  // Telusuri latar putih yang saling terhubung
+  while (head < tail) {
+    const pos = queue[head++];
+    const x = pos % w;
+    const y = Math.floor(pos / w);
+    const i = pos * 4;
+
+    pixels[i + 3] = 0;
+
+    addPixel(x - 1, y);
+    addPixel(x + 1, y);
+    addPixel(x, y - 1);
+    addPixel(x, y + 1);
+  }
+
+  ctx.putImageData(frame, 0, 0);
+
+// Cari batas area gambar yang masih terlihat
+let minX = canvas.width;
+let minY = canvas.height;
+let maxX = -1;
+let maxY = -1;
+
+const data = frame.data;
+
+for (let y = 0; y < canvas.height; y++) {
+  for (let x = 0; x < canvas.width; x++) {
+    const i = (y * canvas.width + x) * 4;
+
+    // Piksel yang tidak transparan
+    if (data[i + 3] > 0) {
+      minX = Math.min(minX, x);
+      minY = Math.min(minY, y);
+      maxX = Math.max(maxX, x);
+      maxY = Math.max(maxY, y);
+    }
+  }
+}
+
+if (maxX < 0 || maxY < 0) {
+  statusText.textContent =
+    "Gambar tidak terdeteksi. Coba gunakan kertas putih dengan pencahayaan terang.";
+  return;
+}
+
+// Tambahkan sedikit ruang di sekeliling gambar
+const padding = 12;
+
+minX = Math.max(0, minX - padding);
+minY = Math.max(0, minY - padding);
+maxX = Math.min(canvas.width - 1, maxX + padding);
+maxY = Math.min(canvas.height - 1, maxY + padding);
+
+// Potong gambar berdasarkan batas tersebut
+const croppedCanvas = document.createElement("canvas");
+
+croppedCanvas.width = maxX - minX + 1;
+croppedCanvas.height = maxY - minY + 1;
+
+const croppedCtx = croppedCanvas.getContext("2d");
+
+croppedCtx.drawImage(
+  canvas,
+  minX, minY,
+  croppedCanvas.width, croppedCanvas.height,
+  0, 0,
+  croppedCanvas.width, croppedCanvas.height
+);
+
+const image = new Image();
+  image.onload = () => {
+    const creature = document.createElement("img");
+    creature.src = image.src;
+    creature.className = "creature";
+    creature.style.top = (15 + Math.random() * 55) + "%";
+    creature.style.animationDuration = (8 + Math.random() * 8) + "s";
+    creature.style.animationDelay = "0s";
+    creature.alt = "Gambar hewan laut hasil pewarnaan";
+
+    creature.style.width = (130 + Math.random() * 80) + "px";
+    creature.style.top = (15 + Math.random() * 55) + "%";
+    creature.style.animationDelay = "0s";
+
+    // Variasi arah renang
+    if (Math.random() > 0.5) {
+      creature.style.animationDirection = "alternate-reverse";
+    }
+
+    creatures.appendChild(creature);
+    creatureCount++;
+
+    statusText.textContent =
+      "Berhasil! Hewan ke-" + creatureCount +
+      " sudah masuk ke dunia laut. Kamu bisa memindai gambar lain.";
+  };
+
+  image.src = croppedCanvas.toDataURL("image/png");
+};
+
+document.getElementById("clear").onclick = () => {
+  creatures.replaceChildren();
+  creatureCount = 0;
+  statusText.textContent = "Dunia laut sudah dibersihkan.";
+};
+
+
+const ocean = document.getElementById("ocean");
+
+document.getElementById("fullscreen").onclick = async () => {
+  try {
+    if (!document.fullscreenElement) {
+      await ocean.requestFullscreen();
+    } else {
+      await document.exitFullscreen();
+    }
+  } catch (error) {
+    statusText.textContent =
+      "Layar penuh tidak dapat diaktifkan pada browser ini.";
+  }
+};
+
+document.addEventListener("fullscreenchange", () => {
+  const button = document.getElementById("fullscreen");
+  button.textContent = document.fullscreenElement
+    ? "✕ Keluar Layar Penuh"
+    : "⛶ Layar Penuh";
+});
+
+
+/* ANIMASI PENJELAJAHAN HEWAN AR COLOUR DRAWING */
+(() => {
+  const ocean = document.getElementById("ocean");
+  const container = document.getElementById("creatures");
+
+  if (!ocean || !container) return;
+
+  const timers = new WeakMap();
+  const directions = new WeakMap();
+  const initialized = new WeakSet();
+
+  function moveCreature(creature) {
+    if (!creature.isConnected) return;
+
+    const area = container.getBoundingClientRect();
+    const width = creature.offsetWidth;
+    const height = creature.offsetHeight;
+
+    if (!area.width || !area.height || !width || !height) {
+      timers.set(
+        creature,
+        setTimeout(() => moveCreature(creature), 1000)
+      );
+      return;
+    }
+
+    // Sisakan jarak dari tepi akuarium
+    const margin = 12;
+    const maxX = Math.max(margin, area.width - width - margin);
+    const maxY = Math.max(margin, area.height - height - margin);
+
+    const oldX = parseFloat(creature.style.left) || margin;
+    const oldY = parseFloat(creature.style.top) || margin;
+
+    // Pilih tujuan baru di area akuarium
+    let x = margin + Math.random() * (maxX - margin);
+    let y = margin + Math.random() * (maxY - margin);
+
+    // Hindari perpindahan terlalu pendek
+    if (Math.abs(x - oldX) < area.width * 0.12) {
+      x = Math.random() < 0.5 ? margin : maxX;
+    }
+
+    const facingRight = x >= oldX;
+    const previousDirection = directions.get(creature);
+
+    // Balik arah hanya jika arah berenangnya berubah
+    if (previousDirection !== facingRight) {
+      creature.style.transform = facingRight
+        ? "scaleX(1)"
+        : "scaleX(-1)";
+      directions.set(creature, facingRight);
+    }
+
+    // Kecepatan lambat, dengan variasi kecil
+    const duration = 6000 + Math.random() * 3000;
+
+    creature.style.transition =
+      `left ${duration}ms ease-in-out, ` +
+      `top ${duration}ms ease-in-out, ` +
+      "transform 1.2s ease-in-out";
+
+    creature.style.left = `${x}px`;
+    creature.style.top = `${y}px`;
+
+    // Beri jeda singkat sebelum memilih tujuan berikutnya
+    timers.set(
+      creature,
+      setTimeout(() => moveCreature(creature), duration + 300)
+    );
+  }
+
+  function setupCreature(creature) {
+    if (initialized.has(creature)) return;
+    initialized.add(creature);
+
+    // Ukuran harus siap sebelum menentukan posisi
+    const start = () => {
+      if (!creature.isConnected) return;
+
+      const area = container.getBoundingClientRect();
+      if (!area.width || !area.height ||
+          !creature.offsetWidth || !creature.offsetHeight) {
+        requestAnimationFrame(start);
+        return;
+      }
+
+      const margin = 12;
+      const maxX = Math.max(
+        margin, area.width - creature.offsetWidth - margin
+      );
+      const maxY = Math.max(
+        margin, area.height - creature.offsetHeight - margin
+      );
+
+      // Posisi awal tersebar di seluruh akuarium
+      creature.style.left =
+        `${margin + Math.random() * (maxX - margin)}px`;
+      creature.style.top =
+        `${margin + Math.random() * (maxY - margin)}px`;
+
+      creature.style.transform = "scaleX(1)";
+      directions.set(creature, true);
+
+      // Mulai bergerak setelah posisi awal terlihat
+      setTimeout(() => moveCreature(creature), 500);
+    };
+
+    start();
+  }
+
+  function scanCreatures() {
+    container.querySelectorAll(".creature").forEach(setupCreature);
+  }
+
+  // Animasi otomatis untuk setiap gambar baru dari kamera
+  const observer = new MutationObserver(scanCreatures);
+  observer.observe(container, { childList: true });
+
+  scanCreatures();
+
+  // Sesuaikan posisi saat ukuran layar berubah
+  window.addEventListener("resize", () => {
+    container.querySelectorAll(".creature").forEach(creature => {
+      if (!creature.isConnected) return;
+
+      const area = container.getBoundingClientRect();
+      const maxX = Math.max(12, area.width - creature.offsetWidth - 12);
+      const maxY = Math.max(12, area.height - creature.offsetHeight - 12);
+
+      const x = Math.min(
+        maxX, Math.max(12, parseFloat(creature.style.left) || 12)
+      );
+      const y = Math.min(
+        maxY, Math.max(12, parseFloat(creature.style.top) || 12)
+      );
+
+      creature.style.transition = "left 1s ease, top 1s ease";
+      creature.style.left = `${x}px`;
+      creature.style.top = `${y}px`;
+    });
+  });
+})();
+
+</script>
+</body>
+</html>
