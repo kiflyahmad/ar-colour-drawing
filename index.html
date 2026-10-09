@@ -956,13 +956,16 @@ import {
   getAuth,
   signInWithEmailAndPassword
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
 import {
   getDatabase,
   ref,
   push,
   onChildAdded,
+  onValue,
   query,
-  limitToLast
+  limitToLast,
+  remove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
 
 /* KONFIGURASI FIREBASE */
@@ -979,6 +982,27 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
+
+
+/* SINKRONISASI HAPUS SEMUA HEWAN */
+async function clearAllAnimals() {
+  try {
+    await remove(ref(db, "drawings"));
+    setStatus("Semua hewan sudah dihapus dari HP dan TV.");
+  } catch (error) {
+    console.error(error);
+    setStatus("Gagal menghapus hewan dari Firebase.");
+  }
+}
+
+/* TV MEMANTAU JIKA DATA GAMBAR DIHAPUS */
+function watchClearAll() {
+  onValue(ref(db, "drawings"), snapshot => {
+    if (!snapshot.exists()) {
+      creatures.replaceChildren();
+    }
+  });
+}
 
 const params = new URLSearchParams(location.search);
 const mode = params.get("mode") || "scan";
@@ -1033,8 +1057,15 @@ async function startScanMode() {
   setStatus("Menghubungkan HP ke Firebase...");
 
   await login();
+  watchClearAll();
 
   setStatus("HP terhubung. Silakan scan gambar.");
+
+  const clearButton = document.getElementById("clear");
+
+if (clearButton) {
+  clearButton.addEventListener("click", clearAllAnimals);
+}
 
   const drawingsRef = ref(db, "drawings");
   const sentImages = new WeakSet();
