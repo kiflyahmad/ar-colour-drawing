@@ -948,5 +948,197 @@ document.addEventListener("fullscreenchange", () => {
 })();
 
 </script>
+
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+import {
+  getAuth,
+  signInWithEmailAndPassword
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import {
+  getDatabase,
+  ref,
+  push,
+  onChildAdded,
+  query,
+  limitToLast
+} from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+
+/* KONFIGURASI FIREBASE */
+const firebaseConfig = {
+  apiKey: "AIzaSyC8AGiHu60N2XS8O_NIk6PcRS-EdE0JtBE",
+  authDomain: "ar-colour-drawing.firebaseapp.com",
+  databaseURL: "https://ar-colour-drawing-default-rtdb.firebaseio.com",
+  projectId: "ar-colour-drawing",
+  storageBucket: "ar-colour-drawing.firebasestorage.app",
+  messagingSenderId: "657798469729",
+  appId: "1:657798469729:web:4e345151e90a228fb13220"
+};
+
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getDatabase(app);
+
+const params = new URLSearchParams(location.search);
+const mode = params.get("mode") || "scan";
+
+const ocean = document.getElementById("ocean");
+const creatures = document.getElementById("creatures");
+const status = document.getElementById("status");
+
+function setStatus(message) {
+  if (status) status.textContent = message;
+  console.log("[AR Colour Drawing]", message);
+}
+
+/* LOGIN: MASUKKAN EMAIL DAN PASSWORD DI PERANGKAT */
+async function login() {
+  const email = prompt("Masukkan email akun AR Colour Drawing:");
+  if (!email) throw new Error("Login dibatalkan.");
+
+  const password = prompt("Masukkan password akun AR Colour Drawing:");
+  if (!password) throw new Error("Login dibatalkan.");
+
+  await signInWithEmailAndPassword(auth, email.trim(), password);
+}
+
+/* KECILKAN GAMBAR, TETAP PERTAHANKAN TRANSPARANSI */
+async function prepareImage(img) {
+  if (!img.complete) {
+    await new Promise((resolve, reject) => {
+      img.onload = resolve;
+      img.onerror = reject;
+    });
+  }
+
+  const maxSide = 700;
+  const scale = Math.min(
+    1,
+    maxSide / Math.max(img.naturalWidth, img.naturalHeight)
+  );
+
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(img.naturalWidth * scale));
+  canvas.height = Math.max(1, Math.round(img.naturalHeight * scale));
+
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+  return canvas.toDataURL("image/png");
+}
+
+/* MODE HP: KIRIM GAMBAR BARU KE FIREBASE */
+async function startScanMode() {
+  setStatus("Menghubungkan HP ke Firebase...");
+
+  await login();
+
+  setStatus("HP terhubung. Silakan scan gambar.");
+
+  const drawingsRef = ref(db, "drawings");
+  const sentImages = new WeakSet();
+
+  const observer = new MutationObserver(async changes => {
+    for (const change of changes) {
+      for (const node of change.addedNodes) {
+        if (!(node instanceof Element)) continue;
+
+        const images = [];
+        if (node.matches?.("img.creature")) images.push(node);
+        node.querySelectorAll?.("img.creature").forEach(img => images.push(img));
+
+        for (const img of images) {
+          if (sentImages.has(img)) continue;
+          sentImages.add(img);
+
+          try {
+            const image = await prepareImage(img);
+            await push(drawingsRef, {
+              image,
+              createdAt: Date.now()
+            });
+            setStatus("Gambar berhasil dikirim ke akuarium TV!");
+          } catch (error) {
+            console.error(error);
+            setStatus("Gagal mengirim gambar. Periksa koneksi dan aturan Firebase.");
+          }
+        }
+      }
+    }
+  });
+
+  observer.observe(creatures, { childList: true, subtree: true });
+}
+
+/* MODE TV: TERIMA GAMBAR DAN TAMPILKAN DI AKUARIUM */
+async function startTVMode() {
+  setStatus("Menghubungkan akuarium TV ke Firebase...");
+
+  // Sembunyikan kontrol scan di TV, jika elemen tersebut tersedia.
+  ["camera", "start", "capture", "clear"].forEach(id => {
+    const element = document.getElementById(id);
+    if (element) element.style.display = "none";
+  });
+
+  await login();
+
+  setStatus("Akuarium TV terhubung. Menunggu gambar dari HP...");
+
+  const drawingsQuery = query(
+    ref(db, "drawings"),
+    limitToLast(15)
+  );
+
+  onChildAdded(drawingsQuery, snapshot => {
+    const data = snapshot.val();
+    if (!data || !data.image) return;
+
+    const img = document.createElement("img");
+    img.className = "creature";
+    img.alt = "Hewan hasil gambar anak";
+    img.src = data.image;
+
+    // Hindari menambahkan gambar yang sama dua kali.
+    img.dataset.firebaseId = snapshot.key;
+
+    if (
+      [...creatures.querySelectorAll(".creature")]
+        .some(item => item.dataset.firebaseId === snapshot.key)
+    ) return;
+
+    creatures.appendChild(img);
+    setStatus("Gambar baru muncul di akuarium!");
+  }, error => {
+    console.error(error);
+    setStatus("Tidak dapat menerima gambar. Periksa aturan database.");
+  });
+
+  // Coba masuk layar penuh; browser TV mungkin meminta interaksi manual.
+  try {
+    if (ocean && !document.fullscreenElement) {
+      await ocean.requestFullscreen();
+    }
+  } catch (error) {
+    setStatus("Akuarium aktif. Tekan tombol Full Screen untuk memenuhi layar.");
+  }
+}
+
+/* JALANKAN MODE YANG DIPILIH DARI URL */
+try {
+  if (!creatures) {
+    throw new Error("Elemen #creatures tidak ditemukan.");
+  }
+
+  if (mode === "tv") {
+    await startTVMode();
+  } else {
+    await startScanMode();
+  }
+} catch (error) {
+  console.error(error);
+  setStatus("Koneksi belum berhasil. Periksa login dan konfigurasi Firebase.");
+}
+</script>
 </body>
 </html>
